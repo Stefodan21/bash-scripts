@@ -10,7 +10,7 @@ BOOTSTRAP_SCRIPTS=(
     "packagebootstrap.sh"
     "networkbootstrap.sh"
     "databasebootstrap.sh"
-    #"securitybootstrap.sh" commented out because this is for a personal machine
+    # "securitybootstrap.sh" 
 )
 
 for script in "${BOOTSTRAP_SCRIPTS[@]}"

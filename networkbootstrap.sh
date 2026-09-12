@@ -1,43 +1,34 @@
 #!/bin/bash
 # Network Bootstrap Script (Fedora/RHEL version)
-# This script configures networking and installs network tools
+# Installs network diagnostics tools and configures Apache/Nginx
 
 set -e
 [ "$EUID" -ne 0 ] && echo "Run as root or with sudo" && exit 1
 
-echo "network script"
+# Log everything for VMSS debugging
+exec > >(tee -i /var/log/networkbootstrap.log)
+exec 2>&1
 
-install_network_tools() {
-    dnf -y update
-    dnf -y install \
-        net-tools bind-utils traceroute tcpdump nmap nmap-ncat iptables \
-        bridge-utils ethtool iftop nethogs speedtest-cli \
-        curl wget mtr whois iproute NetworkManager NetworkManager-wifi iw iputils hping3 socat iproute
-}
+echo "Starting network bootstrap..."
+dnf -y update
 
-# this enables port forwarding for ipv4 and ipv6
-# configure_network() {
-#     grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf || echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-#     grep -q "^net.ipv6.conf.all.forwarding=1" /etc/sysctl.conf || echo "net.ipv6.conf.all.forwarding=1" >> /etc/sysctl.conf
-#     sysctl -p
-# }
+###############################################
+# Network Diagnostics Tools
+###############################################
+dnf -y install \
+    net-tools bind-utils traceroute tcpdump nmap nmap-ncat \
+    bridge-utils ethtool iftop nethogs mtr whois iproute \
+    NetworkManager NetworkManager-wifi iw iputils socat
 
-install_apache() {
-    dnf -y install httpd
-    # systemctl enable --now httpd
-}
+###############################################
+# Web Servers (Networking Layer)
+###############################################
+# Apache
+dnf -y install httpd
+# systemctl enable --now httpd   # optional
 
-install_nginx() {
-    dnf -y install nginx
-   # systemctl enable --now nginx
-}
+# Nginx
+dnf -y install nginx
+# systemctl enable --now nginx   # optional
 
-main() {
-    install_network_tools
-    # configure_network   # disabled
-    install_apache
-    install_nginx
-    echo "Network bootstrap completed successfully!"
-}
-
-[ "${BASH_SOURCE[0]}" == "$0" ] && main "$@"
+echo "Network bootstrap completed successfully!"

@@ -1,48 +1,44 @@
 #!/bin/bash
-# Database Bootstrap Script - installs MySQL, PostgreSQL, SQLite, and tools (Fedora/RHEL version)
+# Database Bootstrap Script (Azure Table Storage version)
+# Installs Azure CLI + Azure Storage SDKs (no local DB engines)
 
 set -e
-
 [ "$EUID" -ne 0 ] && echo "Run as root or with sudo" && exit 1
 
-echo "Database script"
+exec > >(tee -i /var/log/databasebootstrap.log)
+exec 2>&1
 
-install_mysql() {
-    dnf -y update
-    dnf -y install mysql-server
-    systemctl enable --now mysqld
-    mysql -e "DELETE FROM mysql.user WHERE User='';" || true
-    mysql -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost','127.0.0.1','::1');" || true
-    mysql -e "DROP DATABASE IF EXISTS test;" || true
-    mysql -e "DELETE FROM mysql.db WHERE Db LIKE 'test%';" || true
-    mysql -e "FLUSH PRIVILEGES;" || true
-}
+echo "Starting Azure Table Storage bootstrap..."
+dnf -y update
 
-install_postgresql() {
-    dnf -y install postgresql-server postgresql-contrib
-    postgresql-setup --initdb --unit postgresql || true
-    systemctl enable --now postgresql
-}
+###############################################
+# Azure CLI (required for Azure Table Storage ops)
+###############################################
+dnf -y install curl
+curl -sL https://aka.ms/InstallAzureCLIDeb | bash || true
 
-install_sqlite() {
-    dnf -y install sqlite sqlite-devel
-}
+###############################################
+# Azure Storage SDKs (Python + Node)
+###############################################
+dnf -y install python3 python3-pip nodejs
 
+pip install azure-data-tables azure-storage-blob azure-storage-queue --break-system-packages
+npm install -g @azure/data-tables @azure/storage-blob @azure/storage-queue
 
-install_db_tools() {
-    dnf -y install php php-mysqlnd php-mbstring php-zip php-gd php-json php-curl
-    if [ -n "$DISPLAY" ]; then
-        curl -LO https://dbeaver.io/files/dbeaver-ce-latest-stable.x86_64.rpm
-        dnf -y install ./dbeaver-ce-latest-stable.x86_64.rpm
-    fi
-}
+###############################################
+# Optional: Storage Explorer (GUI)
+###############################################
+# Only install if DISPLAY exists (VM with GUI)
+if [ -n "$DISPLAY" ]; then
+    rpm --import https://packages.microsoft.com/keys/microsoft.asc
+    cat <<EOF >/etc/yum.repos.d/msprod.repo
+[msprod]
+name=Microsoft Prod
+baseurl=https://packages.microsoft.com/yumrepos/msprod/
+enabled=1
+gpgcheck=1
+EOF
+    dnf -y install storageexplorer
+fi
 
-main() {
-    install_mysql
-    install_postgresql
-    install_sqlite
-    install_db_tools
-    echo "All databases and tools installed successfully!"
-}
-
-[ "${BASH_SOURCE[0]}" == "$0" ] && main "$@"
+echo "Azure Table Storage tools installed successfully!"
